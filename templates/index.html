@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Responsible AI Bias Detector</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    margin: 0;
+    padding: 40px;
+    color: #2c3e50;
+}
+
+.container {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    width: 550px;
+    margin: auto;
+    border-radius: 15px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+h2 {
+    margin-bottom: 5px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 20px;
+}
+
+input[type="file"] {
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+button {
+    background: linear-gradient(135deg, #3498db, #6dd5fa);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 16px;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.result {
+    margin-top: 25px;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: left;
+}
+
+.fair { border-left: 6px solid #2ecc71; background: #ecfff3; }
+.slight { border-left: 6px solid #f1c40f; background: #fff9e6; }
+.moderate { border-left: 6px solid #e67e22; background: #fff3e6; }
+.severe { border-left: 6px solid #e74c3c; background: #ffecec; }
+.error { background: #ffe6e6; }
+
+.metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.metric-card {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.metric-title {
+    font-size: 13px;
+    color: #777;
+}
+
+.metric-value {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.ai-box {
+    margin-top: 15px;
+    background: #f4f6ff;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #666;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>🤖 Responsible AI Bias Detector</h2>
+    <div class="subtitle">Analyze fairness of ML models in real-time</div>
+
+    <form method="POST" enctype="multipart/form-data">
+
+        <div>
+            <label><b>Upload Dataset</b></label><br>
+            <input type="file" name="dataset" accept=".csv,.xlsx" required>
+        </div>
+
+        <div>
+            <label><b>Upload ML Model</b></label><br>
+            <input type="file" name="model" accept=".pkl" required>
+        </div>
+
+        <button type="submit">🚀 Analyze Bias</button>
+
+    </form>
+
+    {% if result is not none %}
+
+        {% if result.error is defined %}
+
+            <div class="result error">
+                <h3>❌ Error</h3>
+                <p>{{ result.error }}</p>
+            </div>
+
+        {% else %}
+
+            {% if result.bias_level == "Fair" %}
+                <div class="result fair">
+                <h3>✅ Model is FAIR</h3>
+
+            {% elif result.bias_level == "Slight Bias" %}
+                <div class="result slight">
+                <h3>🟡 Slight Bias Detected</h3>
+
+            {% elif result.bias_level == "Moderate Bias" %}
+                <div class="result moderate">
+                <h3>🟠 Moderate Bias Detected</h3>
+
+            {% else %}
+                <div class="result severe">
+                <h3>🔴 Severe Bias Detected</h3>
+
+            {% endif %}
+
+                <div class="badge">
+                    Bias Level: <b>{{ result.bias_level }}</b>
+                </div>
+
+                <div class="metrics">
+
+                    <div class="metric-card">
+                        <div class="metric-title">Demographic Parity</div>
+                        <div class="metric-value">{{ result.dp }}</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-title">Equal Opportunity</div>
+                        <div class="metric-value">{{ result.eo }}</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-title">Predictive Equality</div>
+                        <div class="metric-value">{{ result.pe }}</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-title">Avg Bias</div>
+                        <div class="metric-value">{{ result.avg }}%</div>
+                    </div>
+
+                </div>
+
+                <!-- AI Explanation -->
+                <div class="ai-box">
+                    🤖 <b>AI Insight:</b><br><br>
+                    <div style="white-space: pre-line;">
+                    {{ result.summary }}
+                </div>
+            </div>
+                {% if result.charts %}
+            <div style="margin-top:20px;">
+                <h4>📊 Bias Metrics Visualization</h4>
+
+                <div style="display:flex; gap:10px; justify-content:space-between;">
+                    <img src="{{ url_for('static', filename=result.charts.dp) }}" style="width:30%;">
+                    <img src="{{ url_for('static', filename=result.charts.eo) }}" style="width:30%;">
+                    <img src="{{ url_for('static', filename=result.charts.pe) }}" style="width:30%;">
+                </div>
+            </div>
+            {% endif %}
+                <!-- ✅ SHAP GRAPH FIXED -->
+                {% if result.shap_plot %}
+                <div style="margin-top:20px;">
+                    <h4>📊 Model Explanation (SHAP)</h4>
+                    <img src="{{ url_for('static', filename=result.shap_plot) }}"
+                         style="width:100%; border-radius:10px;">
+                </div>
+                {% endif %}
+
+                <div class="note">
+                    Fair: 0–5% | Slight: 5–10% | Moderate: 10–20% | Severe: 20%+
+                </div>
+
+            </div>
+
+        {% endif %}
+
+        {% if result.pdf %}
+        <div style="margin-top:20px; text-align:center;">
+            <a href="{{ url_for('static', filename=result.pdf) }}" download>
+                <button>📄 Download Report</button>
+            </a>
+        </div>
+        {% endif %}
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>
