@@ -30,7 +30,6 @@ os.makedirs(STATIC_FOLDER, exist_ok=True)
 
 # ================= DETECT SENSITIVE COLUMN =================
 def detect_sensitive_column(df):
-
     priority = ["Gender", "gender", "Sex", "sex"]
 
     for col in priority:
@@ -46,12 +45,10 @@ def detect_sensitive_column(df):
 
 # ================= PREDICTIVE EQUALITY =================
 def predictive_equality_difference(y_true, y_pred, sensitive):
-
     groups = np.unique(sensitive)
     fprs = []
 
     for g in groups:
-
         idx = sensitive == g
 
         cm = confusion_matrix(
@@ -62,11 +59,7 @@ def predictive_equality_difference(y_true, y_pred, sensitive):
 
         TN, FP, FN, TP = cm.ravel()
 
-        if (FP + TN) == 0:
-            fpr = 0
-        else:
-            fpr = FP / (FP + TN)
-
+        fpr = FP / (FP + TN) if (FP + TN) != 0 else 0
         fprs.append(fpr)
 
     return abs(max(fprs) - min(fprs))
@@ -74,7 +67,6 @@ def predictive_equality_difference(y_true, y_pred, sensitive):
 
 # ================= SHAP FUNCTION =================
 def generate_shap_plot(model, X):
-
     try:
         X_sample = X.sample(min(100, len(X)))
 
@@ -97,7 +89,6 @@ def generate_shap_plot(model, X):
 
 # ================= METRIC CHARTS =================
 def generate_metric_charts(result):
-
     metrics = {
         "dp": result["dp"],
         "eo": result["eo"],
@@ -107,7 +98,6 @@ def generate_metric_charts(result):
     filenames = {}
 
     for key, value in metrics.items():
-
         plt.figure()
         plt.bar([key.upper()], [value])
         plt.ylim(0, 1)
@@ -124,7 +114,6 @@ def generate_metric_charts(result):
 
 # ================= PDF GENERATION =================
 def generate_pdf(result):
-
     pdf_path = os.path.join(STATIC_FOLDER, "report.pdf")
 
     doc = SimpleDocTemplate(pdf_path)
@@ -150,7 +139,9 @@ def generate_pdf(result):
 
     # SHAP image
     try:
-        elements.append(Image(os.path.join(STATIC_FOLDER, "shap_plot.png"), width=400, height=300))
+        shap_path = os.path.join(STATIC_FOLDER, "shap_plot.png")
+        if os.path.exists(shap_path):
+            elements.append(Image(shap_path, width=400, height=300))
     except:
         pass
 
@@ -161,7 +152,6 @@ def generate_pdf(result):
 
 # ================= MAIN BIAS FUNCTION =================
 def calculate_bias(model, df):
-
     target_col = df.columns[-1]
     sensitive_col = detect_sensitive_column(df)
 
@@ -169,7 +159,7 @@ def calculate_bias(model, df):
     y_true = df[target_col]
     sensitive = df[sensitive_col]
 
-    # ---------------- MODEL PREDICTION ----------------
+    # MODEL PREDICTION
     try:
         y_pred = model.predict(X)
     except:
@@ -177,21 +167,19 @@ def calculate_bias(model, df):
 
         if hasattr(model, "feature_names_in_"):
             expected = list(model.feature_names_in_)
-
             for col in expected:
                 if col not in X_encoded.columns:
                     X_encoded[col] = 0
-
             X_encoded = X_encoded[expected]
 
         y_pred = model.predict(X_encoded)
 
-    # ---------------- ENCODING ----------------
+    # ENCODING
     y_true_encoded = pd.factorize(y_true)[0].astype(int)
     sensitive_encoded = pd.factorize(sensitive)[0].astype(int)
     y_pred_encoded = pd.factorize(y_pred)[0].astype(int)
 
-    # ---------------- FAIRNESS METRICS ----------------
+    # FAIRNESS METRICS
     dp = demographic_parity_difference(
         y_true=y_true_encoded,
         y_pred=y_pred_encoded,
@@ -210,11 +198,9 @@ def calculate_bias(model, df):
         sensitive_encoded
     )
 
-    # ---------------- AVG BIAS ----------------
     avg_bias = (abs(dp) + abs(eo) + abs(pe)) / 3
     avg_bias_percent = avg_bias * 100
 
-    # ---------------- LEVEL ----------------
     if avg_bias_percent <= 5:
         bias_level = "Fair"
     elif avg_bias_percent <= 10:
@@ -232,13 +218,9 @@ def calculate_bias(model, df):
         "avg": round(avg_bias_percent, 2)
     }
 
-    # ---------------- GRAPHS ----------------
     result["charts"] = generate_metric_charts(result)
-
-    # ---------------- SHAP ----------------
     result["shap_plot"] = generate_shap_plot(model, X)
 
-    # ---------------- GEMINI SUMMARY ----------------
     try:
         result["summary"] = generate_bias_summary(
             result["dp"],
@@ -247,10 +229,10 @@ def calculate_bias(model, df):
             result["avg"],
             result["bias_level"]
         )
-    except:
+    except Exception as e:
+        print("Gemini Error:", e)
         result["summary"] = "AI summary generation failed."
 
-    # ---------------- PDF ----------------
     result["pdf"] = generate_pdf(result)
 
     return result
@@ -259,11 +241,9 @@ def calculate_bias(model, df):
 # ================= ROUTE =================
 @app.route("/", methods=["GET", "POST"])
 def index():
-
     result = None
 
     if request.method == "POST":
-
         try:
             dataset_file = request.files["dataset"]
             model_file = request.files["model"]
@@ -287,8 +267,8 @@ def index():
             result = calculate_bias(model, df)
 
         except Exception as e:
-            result = {"error": str(e)}
             print("ERROR:", e)
+            result = {"error": str(e)}
 
     return render_template("index.html", result=result)
 
@@ -296,4 +276,6 @@ def index():
 # ================= RUN =================
 if __name__ == "__main__":
     print("Responsible AI Bias Detection System Running...")
-    app.run(debug=True)
+
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
