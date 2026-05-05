@@ -1,0 +1,10 @@
+flask
+pandas
+numpy
+scikit-learn
+matplotlib
+shap
+fairlearn
+reportlab
+gunicorn
+python-dotenv
