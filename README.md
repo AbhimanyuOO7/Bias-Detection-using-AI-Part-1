@@ -35,7 +35,7 @@ This project helps identify **bias in AI/ML models** by evaluating predictions a
 * 📈 **Visualization**
 
   * Metric comparison charts
-  * (Optional) SHAP-based explainability
+  * SHAP-based explainability
 
 * 📄 **PDF Report Generation**
 
@@ -69,7 +69,7 @@ This project helps identify **bias in AI/ML models** by evaluating predictions a
 * **Machine Learning:** Scikit-learn
 * **Fairness Metrics:** Fairlearn
 * **Visualization:** Matplotlib
-* **Explainability:** SHAP (optional)
+* **Explainability:** SHAP
 * **Report Generation:** ReportLab
 * **AI Integration:** Gemini API
 
